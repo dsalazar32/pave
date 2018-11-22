@@ -5,13 +5,16 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/coreos/go-semver/semver"
 	"os"
+	"strings"
 )
+
+const DefaultLanguage = "node"
 
 var (
 	cPath = ".tinker/config"
 
 	// TODO: Consider at some point have this supported list be seeded via API call.
-	supportedLangs = map[string]semver.Versions{
+	supportedLanuages = map[string]semver.Versions{
 		"node": versions("10.13.0", "8.10.0", "4.3.2"),
 		"ruby": versions("2.1.7", "2.1.5"),
 		"go":   versions("1.11.1"),
@@ -52,36 +55,42 @@ type Language struct {
 	vers string
 }
 
-func (l *Language) Pick() {
-	vers := supportedLangs[l.name]
-	l.vers = vers[len(vers)-1].String()
+func (l Language) LatesetVers() *semver.Version {
+	vers := supportedLanuages[l.name]
+	return vers[len(vers)-1]
 }
 
 func (l Language) String() string {
 	return fmt.Sprintf("%s %s", l.name, l.vers)
 }
 
-func (l *Language) Set(lang ...string) {
-	l.name = lang[0]
-	if len(lang) > 1 {
-		l.vers = lang[1]
+func (l *Language) Parse(lang string) Language {
+	lv := strings.Split(lang, ":")
+	l.name = lv[0]
+	if len(lv) > 1 {
+		l.vers = lv[1]
 	}
+	return *l
 }
 
-func (l *Language) Validate() error {
-	vers, ok := supportedLangs[l.name]
+func (l *Language) Validate(f bool) error {
+	vers, ok := supportedLanuages[l.name]
 	if !ok {
 		return fmt.Errorf("unsupported language: %s", l.String())
 	}
 	if len(l.vers) == 0 {
-		l.Pick()
+		l.vers = l.LatesetVers().String()
 	} else {
 		for _, v := range vers {
 			t, err := semver.NewVersion(l.vers)
 			if err != nil {
-				return fmt.Errorf("error parsing language version: %v", l.String())
+				return fmt.Errorf("error parsing language version: %s", l.String())
 			}
 			if v.Equal(*t) {
+				if !f && !t.Equal(*l.LatesetVers()) {
+					return fmt.Errorf("error not the latest version [%s]."+
+						" To use the desired version pass the `-f` flag", l.LatesetVers())
+				}
 				return nil
 			}
 		}
