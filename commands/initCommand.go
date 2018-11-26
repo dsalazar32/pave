@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"text/tabwriter"
 )
@@ -16,20 +17,30 @@ type InitCommand struct {
 var (
 	fs = flag.NewFlagSet("Init", flag.ContinueOnError)
 
-	project = fs.String("p", "", "Set the `project` name. Will default to the name of the"+
-		" project directory.")
+	project = fs.String("p", "",
+		"Set the `project` name. Will default to the name of the project directory.")
 
-	projectLang = fs.String("l", "", "Set the project language `LANG[:VERSION]`.\n"+
-		"If LANG is provided the most recently supported version is defaulted.\n"+
-		"If LANG[:VERSION] is other than the most recently supported version, it is required\n"+
-		"that you set -f flag as well.")
+	projectLang = fs.String("l", "",
+		"Set the project language `LANG[:VERSION]`.\n"+
+			"If LANG is provided the most recently supported version is defaulted.\n"+
+			"If LANG[:VERSION] is other than the most recently supported version, it is required that you set -f flag as well.")
 
-	force = fs.Bool("f", false, "Set the force flag to allow validation to use previous supported"+
-		" versions of the supported languages.")
+	force = fs.Bool("f", false,
+		"Set the force flag to allow validation to use previous supported versions of the supported languages.")
 
-	printLanguages = fs.Bool("list-languages", false, "Print supported languages")
+	dockerEnabled = fs.Bool("with-docker", false,
+		"Generate Dockerfile for the supported language.")
 
-	printAllVersions = fs.Bool("show-all-versions", false, "Print supported languages with all versions")
+	terraformEnabled = fs.Bool("with-terraform", false,
+		"Enables terraform support.\n"+
+			"When enabled tinker will generate an initial policy that will create ECS resources for the project to land on.\n"+
+			"There will be support for adding other project dependencies further down the line (ex. s3, rds, dynamo, etc...).")
+
+	printLanguages = fs.Bool("list-languages", false,
+		"Print supported languages and exit")
+
+	printAllVersions = fs.Bool("all-versions", false,
+		"Print supported languages with all versions and exit")
 )
 
 // TODO: Check for .tinker directory and files
@@ -51,6 +62,40 @@ func (c InitCommand) Run(args []string) int {
 				return 1
 			}
 
+			support := Support{}
+			if err := support.Parse("./support.yml"); err != nil {
+				c.Ui.Error(err.Error())
+				return 1
+			}
+			fmt.Printf("%#v\n", support.SupportedLanguages)
+
+			// Print Languages Version(s)
+			if *printLanguages {
+				vHeader := "version"
+				if *printAllVersions {
+					vHeader = vHeader + "s"
+				}
+				rows := [][]string{
+					{"language", vHeader},
+					{"--------", strings.Repeat("-", len(vHeader))},
+				}
+				for l, vers := range supportedLanuages {
+					var version string
+					if *printAllVersions {
+						var vs []string
+						for _, v := range vers {
+							vs = append(vs, v.String())
+						}
+						version = strings.Join(vs, " ")
+					} else {
+						version = vers[len(vers)-1].String()
+					}
+					rows = append(rows, []string{l, version})
+				}
+				printTable(rows)
+				return 0
+			}
+
 			// Configure Project Name
 			// - Set via `-p` flag
 			// - Set via `ask` if `-p` flag is not used. Defaults to project directory.
@@ -67,37 +112,12 @@ func (c InitCommand) Run(args []string) int {
 				}
 			}
 			cfg.ProjectName = *project
-			fmt.Println("")
 
 			// TODO: See about inferring language via .<lang>-version files if present.
 			// Configure Project Language
 			// - Set via `-l` flag
 			// - Set via `ask` if `-l` flag is not used. Defaults to `DefaultLanguage` const [node].
 			if len(*projectLang) == 0 {
-
-				// Print Languages Version(s)
-				if *printLanguages {
-					rows := [][]string{
-						{"language", "version(s)"},
-						{"--------", "-------"},
-					}
-					for l, vers := range supportedLanuages {
-						var version string
-						if *printAllVersions {
-							var vs []string
-							for _, v := range vers {
-								vs = append(vs, v.String())
-							}
-							version = strings.Join(vs, " ")
-						} else {
-							version = vers[len(vers)-1].String()
-						}
-						rows = append(rows, []string{l, version})
-					}
-					printTable(rows)
-					fmt.Println("")
-				}
-
 				*projectLang, err = c.Ui.Ask(fmt.Sprintf("Project language? [%s]", DefaultLanguage))
 				if err != nil {
 					fmt.Println(err)
@@ -114,7 +134,40 @@ func (c InitCommand) Run(args []string) int {
 				return 1
 			}
 			cfg.Language = lang.String()
-			fmt.Println("")
+
+			// Enable Dockerfile support
+			if !*dockerEnabled {
+				b, err := c.Ui.Ask("Enable docker support? [false]")
+				if err != nil {
+					fmt.Println(err)
+					return 1
+				}
+				if len(b) > 0 {
+					*dockerEnabled, err = strconv.ParseBool(b)
+					if err != nil {
+						fmt.Println(err)
+						return 1
+					}
+				}
+			}
+			cfg.Dockerfile = *dockerEnabled
+
+			// Enable Terraform support
+			if !*terraformEnabled {
+				b, err := c.Ui.Ask("Enable terraform support? [false]")
+				if err != nil {
+					fmt.Println(err)
+					return 1
+				}
+				if len(b) > 0 {
+					*terraformEnabled, err = strconv.ParseBool(b)
+					if err != nil {
+						fmt.Println(err)
+						return 1
+					}
+				}
+			}
+			cfg.Terraform = *terraformEnabled
 
 			if err := initializeProject(cfg); err != nil {
 				c.Ui.Error(fmt.Sprintf("Something bad happened: %v\n", err))

@@ -1,0 +1,16 @@
+supported_languages:
+  default: node
+  languages:
+    node:
+      - name: node
+        version: 10.13.0
+        baseimage: 063112144237.dkr.ecr.us-east-1.amazonaws.com/carecloud/node_server:10.13.0
+      - name: node
+        version: 10.5.0
+        baseimage: 063112144237.dkr.ecr.us-east-1.amazonaws.com/carecloud/node_server:10.5.0
+      - name: node
+        version: 8.4.0
+        baseimage: 063112144237.dkr.ecr.us-east-1.amazonaws.com/carecloud/node_server:8.4.0
+    ruby:
+      - version: 2.1.7
+        baseimage: 063112144237.dkr.ecr.us-east-1.amazonaws.com/carecloud/rack_server:nginx-passenger-ruby_1.9.0-4.0.60-2.1.7-3

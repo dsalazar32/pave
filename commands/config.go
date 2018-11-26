@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"github.com/BurntSushi/toml"
 	"github.com/coreos/go-semver/semver"
+	"gopkg.in/yaml.v2"
+	"io/ioutil"
 	"os"
 	"strings"
 )
@@ -110,4 +112,28 @@ func versions(vers ...string) semver.Versions {
 		semver.Sort(svers)
 	}
 	return svers
+}
+
+type Support struct {
+	SupportedLanguages struct {
+		Default   string
+		Languages map[string][]SupportedLanguage
+	} `yaml:"supported_languages"`
+}
+
+type SupportedLanguage struct {
+	Name      string
+	Version   semver.Version
+	BaseImage string
+}
+
+func (s *Support) Parse(dir string) error {
+	f, err := ioutil.ReadFile(dir)
+	if err != nil {
+		return err
+	}
+	if err := yaml.Unmarshal(f, s); err != nil {
+		return fmt.Errorf("error unmarshalling yaml: %s", err)
+	}
+	return nil
 }
