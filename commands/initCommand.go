@@ -3,6 +3,7 @@ package commands
 import (
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -62,12 +63,16 @@ func (c InitCommand) Run(args []string) int {
 				return 1
 			}
 
+			f, err := ioutil.ReadFile("./support.yml")
+			if err != nil {
+				c.Ui.Error(fmt.Sprintf("Error reading support file: %s", err))
+			}
+
 			support := Support{}
-			if err := support.Parse("./support.yml"); err != nil {
+			if err := support.Parse(f); err != nil {
 				c.Ui.Error(err.Error())
 				return 1
 			}
-			fmt.Printf("%#v\n", support.SupportedLanguages)
 
 			// Print Languages Version(s)
 			if *printLanguages {
@@ -79,16 +84,16 @@ func (c InitCommand) Run(args []string) int {
 					{"language", vHeader},
 					{"--------", strings.Repeat("-", len(vHeader))},
 				}
-				for l, vers := range supportedLanuages {
+				for l, vers := range support.SupportedLanguages.Languages {
 					var version string
 					if *printAllVersions {
 						var vs []string
 						for _, v := range vers {
-							vs = append(vs, v.String())
+							vs = append(vs, v.Version.String())
 						}
 						version = strings.Join(vs, " ")
 					} else {
-						version = vers[len(vers)-1].String()
+						version = vers.Latest().Version.String()
 					}
 					rows = append(rows, []string{l, version})
 				}
@@ -118,18 +123,18 @@ func (c InitCommand) Run(args []string) int {
 			// - Set via `-l` flag
 			// - Set via `ask` if `-l` flag is not used. Defaults to `DefaultLanguage` const [node].
 			if len(*projectLang) == 0 {
-				*projectLang, err = c.Ui.Ask(fmt.Sprintf("Project language? [%s]", DefaultLanguage))
+				*projectLang, err = c.Ui.Ask(fmt.Sprintf("Project language? [%s]", support.SupportedLanguages.Default))
 				if err != nil {
 					fmt.Println(err)
 					return 1
 				}
 				if len(*projectLang) == 0 {
-					*projectLang = DefaultLanguage
+					*projectLang = support.SupportedLanguages.Default
 				}
 			}
-			lang := Language{}
-			lang = lang.Parse(*projectLang)
-			if err := lang.Validate(*force); err != nil {
+
+			lang, err := support.SupportedLanguages.Validate(*projectLang, *force)
+			if err != nil {
 				fmt.Println(err)
 				return 1
 			}
