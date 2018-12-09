@@ -1,18 +1,19 @@
-package commands
+package config
 
 import (
 	"errors"
 	"testing"
 )
 
-func TestLanguage_Validate(t *testing.T) {
-	type test struct {
+func TestSupportedLanguages_Validate(t *testing.T) {
+
+	type testSubject struct {
 		lang  string
 		force bool
 		want  interface{}
 	}
 
-	cases := []test{
+	tests := []testSubject{
 		{"node:10.13.0", false, "node:10.13.0"},
 		{"node:10.5.0", true, "node:10.5.0"},
 		{"node:8.4.0", true, "node:8.4.0"},
@@ -26,22 +27,22 @@ func TestLanguage_Validate(t *testing.T) {
 			" desired version pass the `-f` flag")},
 	}
 
-	support := Support{}
-	if err := support.Parse([]byte(data)); err != nil {
-		t.Fatalf("Error reading support file: %s", err)
+	s, err := InitializeSupport([]byte(data))
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	for _, c := range cases {
-		lang, err := support.SupportedLanguages.Validate(c.lang, c.force)
+	for _, c := range tests {
+		lang, err := s.SupportedLanguages.Include(c.lang, c.force)
 		if err != nil {
 			got, want := err.Error(), c.want.(error).Error()
 			if got != want {
 				t.Fatalf("incorrect error returned: want %v, but got %v", want, got)
 			}
 		} else {
-			got := lang.String()
+			got, want := lang, c.want
 			if got != c.want {
-				t.Fatalf("error parsing semver: want %s, but got %s", c.want, got)
+				t.Fatalf("error parsing semver: want %s, but got %s", want, got)
 			}
 		}
 	}

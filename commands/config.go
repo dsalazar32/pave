@@ -2,32 +2,27 @@ package commands
 
 import (
 	"fmt"
-	"github.com/BurntSushi/toml"
 	"github.com/coreos/go-semver/semver"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"os"
+	"sort"
 	"strings"
 )
 
-const DefaultLanguage = "node"
-
 var (
-	cPath = ".tinker/config"
-
-	// TODO: Consider at some point have this supported list be seeded via API call.
-	supportedLanuages = map[string]semver.Versions{
-		"node": versions("10.13.0", "8.10.0", "4.3.2"),
-		"ruby": versions("2.1.7", "2.1.5"),
-		"go":   versions("1.11.1"),
-	}
+	cPath = ".tinker/config.yml"
 )
+
+type Tinker struct {
+	Config `yaml:"tinker"`
+}
 
 type Config struct {
 	// ProjectName represents the project that tinker was initialized under.
 	// Example. If tinker was initialized in a directory by the name
 	// of `ProjectFoo` ProjectName will eq ProjectFoo.
-	ProjectName string
+	ProjectName string `yaml:"project_name"`
 
 	// Language will be either inferred if a .(lang)-version file is detected.
 	// If the .(lang)-version file is not created then tinker will allow the user
@@ -41,9 +36,15 @@ type Config struct {
 	Terraform bool
 }
 
-func (c *Config) Load() error {
+func (t *Tinker) Load() error {
 	if _, err := os.Stat(cPath); os.IsExist(err) {
-		if _, err := toml.DecodeFile(cPath, &c); err != nil {
+		fmt.Println("hit")
+		b, err := ioutil.ReadFile(cPath)
+		fmt.Println(string(b))
+		if err != nil {
+			return err
+		}
+		if err := yaml.Unmarshal(b, &t); err != nil {
 			return err
 		}
 	} else {
@@ -52,73 +53,46 @@ func (c *Config) Load() error {
 	return nil
 }
 
-type Language struct {
-	name string
-	vers string
-}
+func (c Config) Bootstrap() error {
+	t := Tinker{c}
 
-func (l Language) LatesetVers() *semver.Version {
-	vers := supportedLanuages[l.name]
-	return vers[len(vers)-1]
-}
-
-func (l Language) String() string {
-	return fmt.Sprintf("%s %s", l.name, l.vers)
-}
-
-func (l *Language) Parse(lang string) Language {
-	lv := strings.Split(lang, ":")
-	l.name = lv[0]
-	if len(lv) > 1 {
-		l.vers = lv[1]
+	d, err := yaml.Marshal(t)
+	if err != nil {
+		return err
 	}
-	return *l
-}
 
-func (l *Language) Validate(f bool) error {
-	vers, ok := supportedLanuages[l.name]
-	if !ok {
-		return fmt.Errorf("unsupported language: %s", l.String())
+	if err := os.Mkdir(".tinker", 0744); err != nil {
+		return err
 	}
-	if len(l.vers) == 0 {
-		l.vers = l.LatesetVers().String()
-	} else {
-		for _, v := range vers {
-			t, err := semver.NewVersion(l.vers)
-			if err != nil {
-				return fmt.Errorf("error parsing language version: %s", l.String())
-			}
-			if v.Equal(*t) {
-				if !f && !t.Equal(*l.LatesetVers()) {
-					return fmt.Errorf("error not the latest version [%s]."+
-						" To use the desired version pass the `-f` flag", l.LatesetVers())
-				}
-				return nil
-			}
-		}
-		return fmt.Errorf("unsupported version: %s", l.String())
+
+	f, err := os.Create(cPath)
+	if err != nil {
+		return err
 	}
+	defer f.Close()
+
+	_, err = f.WriteString("---\n")
+	if err != nil {
+		return err
+	}
+	_, err = f.Write(d)
+	if err != nil {
+		return err
+	}
+	f.Sync()
+
 	return nil
 }
 
-func versions(vers ...string) semver.Versions {
-	svers := semver.Versions{}
-	for _, v := range vers {
-		ver, err := semver.NewVersion(v)
-		if err != nil {
-			panic(fmt.Sprintf("error parsing versions: %v", err))
-		}
-		svers = append(svers, ver)
-		semver.Sort(svers)
-	}
-	return svers
+type Support struct {
+	SupportedLanguages `yaml:"supported_languages"`
 }
 
-type Support struct {
-	SupportedLanguages struct {
-		Default   string
-		Languages map[string][]SupportedLanguage
-	} `yaml:"supported_languages"`
+type Languages []SupportedLanguage
+
+type SupportedLanguages struct {
+	Default   string
+	Languages map[string]Languages
 }
 
 type SupportedLanguage struct {
@@ -127,13 +101,70 @@ type SupportedLanguage struct {
 	BaseImage string
 }
 
-func (s *Support) Parse(dir string) error {
-	f, err := ioutil.ReadFile(dir)
-	if err != nil {
-		return err
-	}
-	if err := yaml.Unmarshal(f, s); err != nil {
+func (s *Support) Parse(b []byte) error {
+	if err := yaml.Unmarshal(b, s); err != nil {
 		return fmt.Errorf("error unmarshalling yaml: %s", err)
 	}
+
+	// Sort all supported languages by semver
+	for _, v := range s.SupportedLanguages.Languages {
+		v.Sort()
+	}
+
 	return nil
+}
+
+func (sl SupportedLanguage) String() string {
+	return fmt.Sprintf("%s:%s", sl.Name, sl.Version)
+}
+
+func (sl SupportedLanguages) Validate(lang string, force bool) (SupportedLanguage, error) {
+	lv := make([]string, 2)
+	for idx, val := range strings.Split(lang, ":") {
+		lv[idx] = val
+	}
+	lname, lvers := lv[0], lv[1]
+
+	langVers, ok := sl.Languages[lname]
+	if !ok {
+		return SupportedLanguage{}, fmt.Errorf("unsupported language: %s", lang)
+	}
+	if len(lvers) == 0 {
+		return langVers.Latest(), nil
+	}
+	for _, lvs := range langVers {
+		v, err := semver.NewVersion(lvers)
+		if err != nil {
+			return SupportedLanguage{}, fmt.Errorf("error parsing language version: %s", lang)
+		}
+		if lvs.Version.Equal(*v) {
+			if !force && !v.Equal(langVers.Latest().Version) {
+				return SupportedLanguage{}, fmt.Errorf("error not the latest version [%s]."+
+					" To use the desired version pass the `-f` flag", lvers)
+
+			}
+			return lvs, nil
+		}
+	}
+	return SupportedLanguage{}, fmt.Errorf("unsupported version: %s", lang)
+}
+
+func (l Languages) Len() int {
+	return len(l)
+}
+
+func (l Languages) Swap(i, j int) {
+	l[i], l[j] = l[j], l[i]
+}
+
+func (l Languages) Less(i, j int) bool {
+	return l[i].Version.LessThan(l[j].Version)
+}
+
+func (l Languages) Sort() {
+	sort.Sort(l)
+}
+
+func (l Languages) Latest() SupportedLanguage {
+	return l[len(l)-1]
 }
