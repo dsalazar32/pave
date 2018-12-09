@@ -2,23 +2,27 @@ package commands
 
 import (
 	"fmt"
-	"github.com/BurntSushi/toml"
 	"github.com/coreos/go-semver/semver"
 	"gopkg.in/yaml.v2"
+	"io/ioutil"
 	"os"
 	"sort"
 	"strings"
 )
 
 var (
-	cPath = ".tinker/config"
+	cPath = ".tinker/config.yml"
 )
+
+type Tinker struct {
+	Config `yaml:"tinker"`
+}
 
 type Config struct {
 	// ProjectName represents the project that tinker was initialized under.
 	// Example. If tinker was initialized in a directory by the name
 	// of `ProjectFoo` ProjectName will eq ProjectFoo.
-	ProjectName string
+	ProjectName string `yaml:"project_name"`
 
 	// Language will be either inferred if a .(lang)-version file is detected.
 	// If the .(lang)-version file is not created then tinker will allow the user
@@ -32,14 +36,51 @@ type Config struct {
 	Terraform bool
 }
 
-func (c *Config) Load() error {
+func (t *Tinker) Load() error {
 	if _, err := os.Stat(cPath); os.IsExist(err) {
-		if _, err := toml.DecodeFile(cPath, &c); err != nil {
+		fmt.Println("hit")
+		b, err := ioutil.ReadFile(cPath)
+		fmt.Println(string(b))
+		if err != nil {
+			return err
+		}
+		if err := yaml.Unmarshal(b, &t); err != nil {
 			return err
 		}
 	} else {
 		return err
 	}
+	return nil
+}
+
+func (c Config) Bootstrap() error {
+	t := Tinker{c}
+
+	d, err := yaml.Marshal(t)
+	if err != nil {
+		return err
+	}
+
+	if err := os.Mkdir(".tinker", 0744); err != nil {
+		return err
+	}
+
+	f, err := os.Create(cPath)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	_, err = f.WriteString("---\n")
+	if err != nil {
+		return err
+	}
+	_, err = f.Write(d)
+	if err != nil {
+		return err
+	}
+	f.Sync()
+
 	return nil
 }
 
@@ -74,7 +115,7 @@ func (s *Support) Parse(b []byte) error {
 }
 
 func (sl SupportedLanguage) String() string {
-	return fmt.Sprintf("%s %s", sl.Name, sl.Version)
+	return fmt.Sprintf("%s:%s", sl.Name, sl.Version)
 }
 
 func (sl SupportedLanguages) Validate(lang string, force bool) (SupportedLanguage, error) {

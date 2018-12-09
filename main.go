@@ -7,7 +7,7 @@ import (
 
 func main() {
 	cli := &cli.CLI{
-		Name:     "tinker",
+		Name:     "pave",
 		Version:  "0.0.1",
 		Args:     os.Args[1:],
 		Commands: initCommands(),
