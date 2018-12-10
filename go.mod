@@ -1,4 +1,4 @@
-module github.com/dsalazar32/tinker
+module github.com/dsalazar32/pave
 
 require github.com/mitchellh/cli v1.0.0
 

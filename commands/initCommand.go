@@ -3,7 +3,7 @@ package commands
 import (
 	"flag"
 	"fmt"
-	"github.com/dsalazar32/tinker/config"
+	"github.com/dsalazar32/pave/config"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -44,8 +44,8 @@ var (
 
 // TODO: Check for .pave directory and files
 // If not create all required files and directories
-// - .pave
-// - .pave_infra
+// - .pave.yml
+// - .infra
 // - Dockerfile
 func (c InitCommand) Run(args []string) int {
 

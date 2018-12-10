@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/dsalazar32/tinker/commands"
-	"github.com/dsalazar32/tinker/config"
+	"github.com/dsalazar32/pave/commands"
+	"github.com/dsalazar32/pave/config"
 	"github.com/mitchellh/cli"
 	"os"
 )
