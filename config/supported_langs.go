@@ -49,13 +49,13 @@ func (s SupportedLanguages) Include(l string, force bool) (string, error) {
 }
 
 func (s SupportedLanguages) Show(all bool) {
-	vHeader := "version"
+	vHeader := "VERSION"
 	if all {
-		vHeader = vHeader + "s"
+		vHeader = vHeader + "S"
 	}
 
 	rows := [][]string{
-		{"language", vHeader},
+		{"LANGUAGE", vHeader},
 	}
 
 	for l, vers := range s.Languages {

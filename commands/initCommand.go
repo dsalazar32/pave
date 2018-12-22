@@ -3,10 +3,10 @@ package commands
 import (
 	"flag"
 	"fmt"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/dsalazar32/pave/config"
 	"os"
 	"path/filepath"
-	"strconv"
 )
 
 type InitCommand struct {
@@ -27,19 +27,22 @@ var (
 	force = fs.Bool("f", false,
 		"Set the force flag to allow validation to use previous supported versions of the supported languages.")
 
-	dockerEnabled = fs.Bool("with-docker", false,
+	dockerDisabled = fs.Bool("no-docker", false,
 		"Generate Dockerfile for the supported language.")
 
-	terraformEnabled = fs.Bool("with-terraform", false,
+	terraformDisabled = fs.Bool("no-terraform", false,
 		"Enables terraform support.\n"+
 			"When enabled pave will generate an initial policy that will create ECS resources for the project to land on.\n"+
 			"There will be support for adding other project dependencies further down the line (ex. s3, rds, dynamo, etc...).")
 
 	printLanguages = fs.Bool("list-languages", false,
-		"Print supported languages and exit")
+		"Print supported languages and exit.")
 
 	printAllVersions = fs.Bool("all-versions", false,
-		"Print supported languages with all versions and exit")
+		"Print supported languages with all versions and exit.")
+
+	dryRun = fs.Bool("dry-run", false,
+		"Doesn't generate configuration files.")
 )
 
 // TODO: Check for .pave directory and files
@@ -115,44 +118,22 @@ func (c InitCommand) Run(args []string) int {
 	p.ProjectLang = lang
 
 	// Enable Dockerfile support
-	if !*dockerEnabled {
-		b, err := c.Ui.Ask("Enable docker support? [false]")
-		if err != nil {
-			fmt.Println(err)
-			return 1
-		}
-		if len(b) > 0 {
-			*dockerEnabled, err = strconv.ParseBool(b)
-			if err != nil {
-				fmt.Println(err)
-				return 1
-			}
-		}
-	}
-	p.DockerEnabled = *dockerEnabled
+	p.DockerEnabled = !*dockerDisabled
 
 	// Enable Terraform support
-	if !*terraformEnabled {
-		b, err := c.Ui.Ask("Enable terraform support? [false]")
-		if err != nil {
-			fmt.Println(err)
-			return 1
-		}
-		if len(b) > 0 {
-			*terraformEnabled, err = strconv.ParseBool(b)
-			if err != nil {
-				fmt.Println(err)
-				return 1
-			}
-		}
-	}
-	p.TerraformEnabled = *terraformEnabled
+	p.TerraformEnabled = !*terraformDisabled
 
 	c.Config.Pave = p
 
-	if err := c.Config.WriteFile(); err != nil {
-		c.Ui.Error(fmt.Sprintf("error writing config file: %s\n", err))
-		return 1
+	if *dryRun {
+		fmt.Println("")
+		spew.Dump(c.Config)
+		fmt.Println("")
+	} else {
+		if err := c.Config.WriteFile(); err != nil {
+			c.Ui.Error(fmt.Sprintf("error writing config file: %s\n", err))
+			return 1
+		}
 	}
 
 	return 0

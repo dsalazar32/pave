@@ -2,18 +2,19 @@ package config
 
 import (
 	"errors"
+	"path/filepath"
 	"testing"
 )
 
-func TestSupportedLanguages_Validate(t *testing.T) {
+func TestSupportedLanguages_Include(t *testing.T) {
 
-	type testSubject struct {
+	type tt struct {
 		lang  string
 		force bool
 		want  interface{}
 	}
 
-	tests := []testSubject{
+	tc := []tt{
 		{"node:10.13.0", false, "node:10.13.0"},
 		{"node:10.5.0", true, "node:10.5.0"},
 		{"node:8.4.0", true, "node:8.4.0"},
@@ -27,12 +28,12 @@ func TestSupportedLanguages_Validate(t *testing.T) {
 			" desired version pass the `-f` flag")},
 	}
 
-	s, err := InitializeSupport([]byte(data))
+	s, err := LoadSupportFile(filepath.Join("..", "fixtures", "support.yml"))
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	for _, c := range tests {
+	for _, c := range tc {
 		lang, err := s.SupportedLanguages.Include(c.lang, c.force)
 		if err != nil {
 			got, want := err.Error(), c.want.(error).Error()
@@ -47,23 +48,3 @@ func TestSupportedLanguages_Validate(t *testing.T) {
 		}
 	}
 }
-
-var data = `
-supported_languages:
-  default: node
-  languages:
-    node:
-      - name: node
-        version: 10.13.0
-        baseimage: 063112144237.dkr.ecr.us-east-1.amazonaws.com/carecloud/node_server:10.13.0
-      - name: node
-        version: 10.5.0
-        baseimage: 063112144237.dkr.ecr.us-east-1.amazonaws.com/carecloud/node_server:10.5.0
-      - name: node
-        version: 8.4.0
-        baseimage: 063112144237.dkr.ecr.us-east-1.amazonaws.com/carecloud/node_server:8.4.0
-    ruby:
-      - name: ruby
-        version: 2.1.7
-        baseimage: 063112144237.dkr.ecr.us-east-1.amazonaws.com/carecloud/rack_server:nginx-passenger-ruby_1.9.0-4.0.60-2.1.7-3
-`
