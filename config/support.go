@@ -8,6 +8,7 @@ import (
 
 type Support struct {
 	SupportedLanguages `yaml:"supported_languages"`
+	SupportFiles `yaml:"support_files"`
 }
 
 func LoadSupportFile(f string) (*Support, error) {
@@ -26,5 +27,6 @@ func InitializeSupport(b []byte) (*Support, error) {
 	for _, v := range s.Languages {
 		sort.Sort(v)
 	}
+
 	return s, nil
 }
