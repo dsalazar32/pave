@@ -68,6 +68,29 @@ func (c Config) WriteFile() error {
 	return nil
 }
 
+func (c Config) Scaffold(s Support) error {
+	sf, err := s.SupportFiles.For(c.Pave.ProjectLang)
+	if err != nil {
+		return err
+	}
+
+	if c.Pave.DockerEnabled {
+		p, err := sf.Get("docker")
+		if err != nil {
+			return err
+		}
+
+		for _, f := range *p {
+			s, err := ParseTemplate(f.Content, TemplatePackage{c, s})
+			if err != nil {
+				return err
+			}
+			fmt.Println(s)
+		}
+	}
+	return nil
+}
+
 func printTable(rows [][]string) {
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 10, ' ', 0)
 	for _, r := range rows {

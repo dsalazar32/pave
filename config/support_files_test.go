@@ -1,7 +1,6 @@
 package config
 
 import (
-	"github.com/davecgh/go-spew/spew"
 	"path/filepath"
 	"testing"
 )
@@ -10,14 +9,14 @@ type outputs map[string]string
 
 func TestSupportFiles_For(t *testing.T) {
 	type tt struct {
-		c    Pave
+		c    Config
 		want map[string]string
 	}
 
 	tc := []tt{
-		{Pave{"Pave", "node:10.13.0", true, false}, outputs{
+		{Config{"1", &Pave{"PaveTest", "node:10.13.0", true, false}}, outputs{
 			"Dockerfile": dockerfile,
-			"Buildfile": buildfile,
+			"Buildfile":  buildfile,
 		}},
 	}
 	_ = tc
@@ -27,12 +26,8 @@ func TestSupportFiles_For(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	p, err := s.SupportFiles.For("node:10.13.0")
-	if err != nil {
-		t.Error(err)
-	}
-
-	spew.Dump(p.Get("docker"))
+	c := tc[0].c
+	c.Scaffold(*s)
 }
 
 var buildfile = `

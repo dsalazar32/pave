@@ -23,7 +23,7 @@ support_files:
           #!/bin/bash
           set -e
 
-          APP_NS={{.projectName}}
+          APP_NS={{.Config.Pave.ProjectName}}
           EXPORT_DIR=/home/node/app/outfile
           BUILD_VARS=build.variables
 
@@ -59,9 +59,9 @@ support_files:
           run_as_node "shasum -a 256 ${GIT_COMMIT}.tar.gz > ${GIT_COMMIT}.tar.gz.sha256"
       - outfile: Dockerfile
         content: |
-          FROM {{.baseImage}}
+          FROM {{.Support.BaseImageLookup .Config.Pave.ProjectLang}}
 
-          ENV APP_NS={{.projectName}}
+          ENV APP_NS={{.Config.Pave.ProjectName}}
           ENV NODE_DIR=/home/node
           ENV APP_DIR=$NODE_DIR/$APP_NS
 
@@ -81,3 +81,4 @@ support_files:
           USER root
           CMD ["/sbin/my_init"]
   node:10.13.0: *nodeInclude
+  node:8.4.0: *nodeInclude

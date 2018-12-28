@@ -4,11 +4,12 @@ import (
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"sort"
+	"strings"
 )
 
 type Support struct {
 	SupportedLanguages `yaml:"supported_languages"`
-	SupportFiles `yaml:"support_files"`
+	SupportFiles       `yaml:"support_files"`
 }
 
 func LoadSupportFile(f string) (*Support, error) {
@@ -29,4 +30,15 @@ func InitializeSupport(b []byte) (*Support, error) {
 	}
 
 	return s, nil
+}
+
+func (s Support) BaseImageLookup(lv string) string {
+	langvers := strings.Split(lv, ":")
+	vers := s.SupportedLanguages.Languages[langvers[0]]
+	for _, v := range vers {
+		if v.Version.String() == langvers[1] {
+			return v.BaseImage
+		}
+	}
+	return ""
 }
