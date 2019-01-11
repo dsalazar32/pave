@@ -19,11 +19,12 @@ support_files:
   node: &nodeInclude
     docker:
       - outfile: Buildfile
+        perms: 0744
         content: |
           #!/bin/bash
           set -e
 
-          APP_NS={{.projectName}}
+          APP_NS={{.Pave.ProjectName}}
           EXPORT_DIR=/home/node/app/outfile
           BUILD_VARS=build.variables
 
@@ -58,10 +59,11 @@ support_files:
           cd $EXPORT_DIR
           run_as_node "shasum -a 256 ${GIT_COMMIT}.tar.gz > ${GIT_COMMIT}.tar.gz.sha256"
       - outfile: Dockerfile
+        perms: 0644
         content: |
-          FROM {{.baseImage}}
+          FROM {{baseImage .Pave.ProjectLang}}
 
-          ENV APP_NS={{.projectName}}
+          ENV APP_NS={{.Pave.ProjectName}}
           ENV NODE_DIR=/home/node
           ENV APP_DIR=$NODE_DIR/$APP_NS
 

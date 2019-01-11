@@ -1,8 +1,11 @@
 package config
 
 import (
+	"bytes"
+	"github.com/dsalazar32/pave/helper/strparser"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
+	"path/filepath"
 	"sort"
 	"strings"
 )
@@ -41,4 +44,28 @@ func (s Support) BaseImageLookup(lv string) string {
 		}
 	}
 	return ""
+}
+
+func (s Support) WriteFiles(c Config, outs Outfiles) error {
+	tmpl := strparser.TemplatePackage{
+		Ns: "SupportFiles",
+		FuncMap: strparser.FuncMap{
+			"baseImage": func(l string) string {
+				return s.BaseImageLookup(l)
+			},
+		},
+		Data: c,
+	}
+
+	for _, o := range outs {
+		b := &bytes.Buffer{}
+		if err := strparser.ParseTemplate(o.Content, tmpl, b); err != nil {
+			return err
+		}
+		if err := ioutil.WriteFile(filepath.Join(PaveDir, o.Outfile), b.Bytes(), o.Perms); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
