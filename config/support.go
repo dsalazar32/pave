@@ -2,10 +2,10 @@ package config
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/dsalazar32/pave/helper/strparser"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
-	"path/filepath"
 	"sort"
 	"strings"
 )
@@ -53,6 +53,9 @@ func (s Support) WriteFiles(c Config, outs Outfiles) error {
 			"baseImage": func(l string) string {
 				return s.BaseImageLookup(l)
 			},
+			"leadTab": func(c string) string {
+				return fmt.Sprintf("%s%s", "\t", c)
+			},
 		},
 		Data: c,
 	}
@@ -62,7 +65,7 @@ func (s Support) WriteFiles(c Config, outs Outfiles) error {
 		if err := strparser.ParseTemplate(o.Content, tmpl, b); err != nil {
 			return err
 		}
-		if err := ioutil.WriteFile(filepath.Join(PaveDir, o.Outfile), b.Bytes(), o.Perms); err != nil {
+		if err := ioutil.WriteFile(o.Outfile, b.Bytes(), o.Perms); err != nil {
 			return err
 		}
 	}

@@ -6,6 +6,7 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	"github.com/dsalazar32/pave/config"
 	"os"
+	"os/user"
 	"path/filepath"
 )
 
@@ -52,6 +53,11 @@ var (
 // - Dockerfile
 func (c InitCommand) Run(args []string) int {
 
+	usr, err := user.Current()
+	if err != nil {
+		panic(err)
+	}
+
 	if c.Config.IsValid() {
 		c.Ui.Info("Pave seems to be initialized in this project.\n" +
 			"To re-initialize the project run pave init with the '-force' flag or remove the .pave.yml.")
@@ -63,7 +69,7 @@ func (c InitCommand) Run(args []string) int {
 		return 1
 	}
 
-	sf, err := config.LoadSupportFile("./support.yml")
+	sf, err := config.LoadSupportFile(filepath.Join(usr.HomeDir, ".pave", "support.yml"))
 	if err != nil {
 		c.Ui.Error(fmt.Sprintf("error loading support file: %s", err))
 		return 1
