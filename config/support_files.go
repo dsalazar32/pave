@@ -2,10 +2,12 @@ package config
 
 import (
 	"fmt"
+	"os"
 )
 
 type Outfile struct {
 	Outfile string
+	Perms	os.FileMode
 	Content string
 }
 

@@ -1,6 +1,7 @@
 package config
 
 import (
+	"bytes"
 	"fmt"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
@@ -11,6 +12,7 @@ import (
 
 const (
 	ConfigFile = ".pave.yml"
+	PaveDir    = ".pave"
 	VersionNum = "1"
 )
 
@@ -19,73 +21,92 @@ type Config struct {
 	Pave    *Pave `yaml:"pave"`
 }
 
-func Read(c string) *Config {
-	cfg := Config{}
+func InitConfig(b []byte) *Config {
+	c := &Config{}
 
-	if _, err := os.Stat(c); err != nil {
-		cfg.Version = VersionNum
-		return &cfg
+	// Assumption here is that no file exists so initialize
+	// an empty config with the supported version.
+	if len(b) == 0 {
+		c.Version = VersionNum
+		return c
 	}
 
-	b, err := ioutil.ReadFile(c)
-	if err != nil {
+	if err := yaml.Unmarshal(b, c); err != nil {
 		panic(err)
 	}
 
-	if err := yaml.Unmarshal(b, &cfg); err != nil {
-		panic(err)
+	return c
+}
+
+func LoadFile(fd string) *Config {
+	var f []byte
+
+	b := &bytes.Buffer{}
+
+	_, err := os.Stat(fd)
+	if err == nil {
+		f, err = ioutil.ReadFile(fd)
+		if err != nil {
+			panic(err)
+		}
+		b.Write(f)
 	}
 
-	return &cfg
+	return InitConfig(b.Bytes())
 }
 
 func (c Config) IsValid() bool {
 	return c.Pave != nil
 }
 
-func (c Config) WriteFile() error {
+func (c Config) ToYaml() ([]byte, error) {
+	b := &bytes.Buffer{}
+
+	_, err := b.WriteString("---\n")
+	if err != nil {
+		return nil, err
+	}
+
 	y, err := yaml.Marshal(c)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	f, err := os.Create(ConfigFile)
+	_, err = b.Write(y)
+	if err != nil {
+		return nil, err
+	}
+
+	return b.Bytes(), nil
+}
+
+func (c Config) WriteFile() error {
+	b, err := c.ToYaml()
 	if err != nil {
 		return err
 	}
-	defer f.Close()
-
-	_, err = f.WriteString("---\n")
-	if err != nil {
+	if err := os.Mkdir(PaveDir, 0744); err != nil {
 		return err
 	}
-	_, err = f.Write(y)
-	if err != nil {
+	if err := ioutil.WriteFile(ConfigFile, b, 0644); err != nil {
 		return err
 	}
-	f.Sync()
-
 	return nil
 }
 
 func (c Config) Scaffold(s Support) error {
-	sf, err := s.SupportFiles.For(c.Pave.ProjectLang)
+	sfiles, err := s.SupportFiles.For(c.Pave.ProjectLang)
 	if err != nil {
 		return err
 	}
 
 	if c.Pave.DockerEnabled {
-		p, err := sf.Get("docker")
+		p, err := sfiles.Get("docker")
 		if err != nil {
 			return err
 		}
-
-		for _, f := range *p {
-			s, err := ParseTemplate(f.Content, TemplatePackage{c, s})
-			if err != nil {
-				return err
-			}
-			fmt.Println(s)
+		if err := s.WriteFiles(c, *p); err != nil {
+			return err
 		}
 	}
 	return nil

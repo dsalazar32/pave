@@ -19,11 +19,12 @@ support_files:
   node: &nodeInclude
     docker:
       - outfile: Buildfile
+        perms: 0744
         content: |
           #!/bin/bash
           set -e
 
-          APP_NS={{.Config.Pave.ProjectName}}
+          APP_NS={{.Pave.ProjectName}}
           EXPORT_DIR=/home/node/app/outfile
           BUILD_VARS=build.variables
 
@@ -34,7 +35,7 @@ support_files:
           if [ -f $BUILD_VARS ]; then
             echo "$BUILD_VARS exist."
             while IFS='=' read -r key value; do
-                eval ${key}\=${value}
+              eval ${key}\=${value}
             done < "$BUILD_VARS"
           else
             apt-get install -qy git
@@ -58,10 +59,11 @@ support_files:
           cd $EXPORT_DIR
           run_as_node "shasum -a 256 ${GIT_COMMIT}.tar.gz > ${GIT_COMMIT}.tar.gz.sha256"
       - outfile: Dockerfile
+        perms: 0644
         content: |
-          FROM {{.Support.BaseImageLookup .Config.Pave.ProjectLang}}
+          FROM {{baseImage .Pave.ProjectLang}}
 
-          ENV APP_NS={{.Config.Pave.ProjectName}}
+          ENV APP_NS={{.Pave.ProjectName}}
           ENV NODE_DIR=/home/node
           ENV APP_DIR=$NODE_DIR/$APP_NS
 
@@ -72,11 +74,11 @@ support_files:
           USER node
           COPY outfile $NODE_DIR
           RUN  shasum -a 256 -c ${ARTIFACT}.tar.gz.sha256 \
-                 && mkdir ${NODE_DIR}/${ARTIFACT} \
-                 && tar -xzvf *.tar.gz -C ${NODE_DIR}/${ARTIFACT} \
-                 && ln -s ${ARTIFACT} $APP_DIR \
-                 && ln -s $APP_DIR app \
-                 && rm -rf *.tar.gz
+            && mkdir ${NODE_DIR}/${ARTIFACT} \
+            && tar -xzvf *.tar.gz -C ${NODE_DIR}/${ARTIFACT} \
+            && ln -s ${ARTIFACT} $APP_DIR \
+            && ln -s $APP_DIR app \
+            && rm -rf *.tar.gz
 
           USER root
           CMD ["/sbin/my_init"]

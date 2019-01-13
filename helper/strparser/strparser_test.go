@@ -11,50 +11,44 @@ const DOB = "1980-06-03"
 
 func TestParseTemplate(t *testing.T) {
 	type tt struct {
-		s    string
-		pkg  TemplatePackage
-		want string
+		given string
+		want  string
 	}
 
-	tcs := []tt{
+	tc := []tt{
 		{
 			`Hello my name is {{.Name}}`,
-			templatePackageMock(),
 			"Hello my name is David Salazar",
 		},
 		{
 			`My birthday is on {{prettifyDate .Dob}}`,
-			templatePackageMock(),
 			"My birthday is on June 3, 1980",
 		},
 		{
 			`Which makes me {{.GetAge}}`,
-			templatePackageMock(),
 			fmt.Sprintf("Which makes me %d", calcAge(ParseDate(DOB))),
 		},
 		{
 			`{{.Interest}}`,
-			templatePackageMock(),
 			"I like to tinker about with go.",
 		},
 		{
 			`Check out the invalid field {{.Invalid}}`,
-			templatePackageMock(),
 			"executing \"TemplateMock\" at <.Invalid>: can't evaluate field Invalid in type strparser.MockData",
 		},
 	}
 
-	for _, tc := range tcs {
+	for _, c := range tc {
 		b := &bytes.Buffer{}
-		if err := ParseTemplate(tc.s, tc.pkg, b); err != nil {
-			if err.Error() != tc.want {
-				t.Errorf("error with expected err response for \"%s\" want %s but got: %s", tc.s, tc.want, err)
+		if err := ParseTemplate(c.given, templatePackageMock(), b); err != nil {
+			if err.Error() != c.want {
+				t.Errorf("error with expected err response for \"%s\" want %s but got: %s", c.given, c.want, err)
 			}
 			continue
 		}
 		got := b.String()
-		if tc.want != got {
-			t.Errorf("error parsing template \"%s\" want %s but got: %s", tc.s, tc.want, got)
+		if c.want != got {
+			t.Errorf("error parsing template \"%s\" want %s but got: %s", c.given, c.want, got)
 		}
 	}
 }

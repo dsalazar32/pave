@@ -9,7 +9,7 @@ import (
 
 var meta = commands.Meta{
 	Ui:     &cli.BasicUi{Reader: os.Stdin, Writer: os.Stdout},
-	Config: config.Read(config.ConfigFile),
+	Config: config.LoadFile(config.ConfigFile),
 }
 
 func initCommands() map[string]cli.CommandFactory {
