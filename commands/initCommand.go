@@ -14,44 +14,44 @@ type InitCommand struct {
 	Meta
 }
 
-var (
-	fs = flag.NewFlagSet("InitConfig", flag.ContinueOnError)
-
-	project = fs.String("p", "",
-		"Set the `project` name. Will default to the name of the project directory.")
-
-	projectLang = fs.String("l", "",
-		"Set the project language `LANG[:VERSION]`.\n"+
-			"If LANG is provided the most recently supported version is defaulted.\n"+
-			"If LANG[:VERSION] is other than the most recently supported version, it is required that you set -f flag as well.")
-
-	force = fs.Bool("f", false,
-		"Set the force flag to allow validation to use previous supported versions of the supported languages.")
-
-	dockerDisabled = fs.Bool("no-docker", false,
-		"Generate Dockerfile for the supported language.")
-
-	terraformDisabled = fs.Bool("no-terraform", false,
-		"Enables terraform support.\n"+
-			"When enabled pave will generate an initial policy that will create ECS resources for the project to land on.\n"+
-			"There will be support for adding other project dependencies further down the line (ex. s3, rds, dynamo, etc...).")
-
-	printLanguages = fs.Bool("list-languages", false,
-		"Print supported languages and exit.")
-
-	printAllVersions = fs.Bool("all-versions", false,
-		"Print supported languages with all versions and exit.")
-
-	dryRun = fs.Bool("dry-run", false,
-		"Doesn't generate configuration files.")
-)
-
 // TODO: Check for .pave directory and files
 // If not create all required files and directories
 // - .pave.yml
 // - .infra
 // - Dockerfile
 func (c InitCommand) Run(args []string) int {
+
+	var (
+		fs = flag.NewFlagSet("Init", flag.ContinueOnError)
+
+		project = fs.String("p", "",
+			"Set the `project` name. Will default to the name of the project directory.")
+
+		projectLang = fs.String("l", "",
+			"Set the project language `LANG[:VERSION]`.\n"+
+				"If LANG is provided the most recently supported version is defaulted.\n"+
+				"If LANG[:VERSION] is other than the most recently supported version, it is required that you set -f flag as well.")
+
+		force = fs.Bool("f", false,
+			"Set the force flag to allow validation to use previous supported versions of the supported languages.")
+
+		dockerDisabled = fs.Bool("no-docker", false,
+			"Generate Dockerfile for the supported language.")
+
+		terraformDisabled = fs.Bool("no-terraform", false,
+			"Enables terraform support.\n"+
+				"When enabled pave will generate an initial policy that will create ECS resources for the project to land on.\n"+
+				"There will be support for adding other project dependencies further down the line (ex. s3, rds, dynamo, etc...).")
+
+		printLanguages = fs.Bool("list-languages", false,
+			"Print supported languages and exit.")
+
+		printAllVersions = fs.Bool("all-versions", false,
+			"Print supported languages with all versions and exit.")
+
+		dryRun = fs.Bool("dry-run", false,
+			"Doesn't generate configuration files.")
+	)
 
 	usr, err := user.Current()
 	if err != nil {

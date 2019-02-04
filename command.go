@@ -17,5 +17,8 @@ func initCommands() map[string]cli.CommandFactory {
 		"init": func() (cli.Command, error) {
 			return commands.InitCommand{Meta: meta}, nil
 		},
+		"env": func() (cli.Command, error) {
+			return commands.EnvCommand{Meta: meta}, nil
+		},
 	}
 }
