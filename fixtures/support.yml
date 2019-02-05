@@ -1,10 +1,20 @@
+supported_storage:
+  default: GCP
+  platforms:
+    gcp:
+      bucket: carecloud-terraform-admin
+      prefix: pave/{{.Environment}}
+    aws:
+      bucket: carecloud-terraform-admin
+      prefix: pave/{{.Environment}}
+
 supported_languages:
   default: node
   languages:
     node:
       - name: node
         version: 10.13.0
-        baseimage: 063112144237.dkr.ecr.us-east-1.amazonaws.com/carecloud/node_server:10.13.0
+        baseimage: gcr.io/carecloud-terraform-admin/carecloud/node:10.13.0
       - name: node
         version: 10.5.0
         baseimage: 063112144237.dkr.ecr.us-east-1.amazonaws.com/carecloud/node_server:10.5.0
@@ -15,72 +25,27 @@ supported_languages:
       - name: ruby
         version: 2.1.7
         baseimage: 063112144237.dkr.ecr.us-east-1.amazonaws.com/carecloud/rack_server:nginx-passenger-ruby_1.9.0-4.0.60-2.1.7-3
+
 support_files:
   node: &nodeInclude
     docker:
-      - outfile: Buildfile
-        perms: 0744
-        content: |
-          #!/bin/bash
-          set -e
-
-          APP_NS={{.Pave.ProjectName}}
-          EXPORT_DIR=/home/node/app/outfile
-          BUILD_VARS=build.variables
-
-          run_as_node() {
-            su -c "$1" node
-          }
-
-          if [ -f $BUILD_VARS ]; then
-            echo "$BUILD_VARS exist."
-            while IFS='=' read -r key value; do
-              eval ${key}\=${value}
-            done < "$BUILD_VARS"
-          else
-            apt-get install -qy git
-            GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
-            GIT_COMMIT=$(git rev-parse HEAD)
-          fi
-
-          if [ -d $EXPORT_DIR ]; then
-            rm -rf $EXPORT_DIR
-          fi
-
-          cd /home/node/app
-          chown -R node.node /home/node/app
-
-          run_as_node "yarn install --production"
-          run_as_node "mkdir -p $EXPORT_DIR"
-          run_as_node "mkdir -p /home/node/outfile"
-          run_as_node "tar -czvf /home/node/outfile/${GIT_COMMIT}.tar.gz --exclude .git --exclude .idea --exclude outfile ."
-          run_as_node "mv /home/node/outfile/${GIT_COMMIT}.tar.gz ${EXPORT_DIR}/"
-
-          cd $EXPORT_DIR
-          run_as_node "shasum -a 256 ${GIT_COMMIT}.tar.gz > ${GIT_COMMIT}.tar.gz.sha256"
-      - outfile: Dockerfile
+      - outfile: cloudbuild.yaml
         perms: 0644
         content: |
-          FROM {{baseImage .Pave.ProjectLang}}
+          steps:
+          - name: '{{baseImage .Pave.ProjectLang}}'
+            args: ['./.pave/Buildfile']
+          - name: 'gcr.io/cloud-builders/docker'
+            args: ['build', '--build-arg', 'ARTIFACT=$COMMIT_SHA', '-t', 'gcr.io/$PROJECT_ID/carecloud/{{.Pave.ProjectName}}:$COMMIT_SHA', '-f', './.pave/Dockerfile', '.']
+          images: ['gcr.io/$PROJECT_ID/carecloud/{{.Pave.ProjectName}}:$COMMIT_SHA']
+      - outfile: Makefile
+        perms: 0644
+        content: |
+          bldvars ?= build.variables
+          -include $(bldvars)
+          export $(shell sed 's/=.*//' $(bldvars))
+          export PROJECT_NAME={{.Pave.ProjectName}}
+          export DOCKER_BASE={{baseImage .Pave.ProjectLang}}
 
-          ENV APP_NS={{.Pave.ProjectName}}
-          ENV NODE_DIR=/home/node
-          ENV APP_DIR=$NODE_DIR/$APP_NS
-
-          ARG ARTIFACT
-
-          WORKDIR /home/node
-
-          USER node
-          COPY outfile $NODE_DIR
-          RUN  shasum -a 256 -c ${ARTIFACT}.tar.gz.sha256 \
-            && mkdir ${NODE_DIR}/${ARTIFACT} \
-            && tar -xzvf *.tar.gz -C ${NODE_DIR}/${ARTIFACT} \
-            && ln -s ${ARTIFACT} $APP_DIR \
-            && ln -s $APP_DIR app \
-            && rm -rf *.tar.gz
-
-          USER root
-          CMD ["/sbin/my_init"]
-  node:10.13.0: *nodeInclude
-  node:8.4.0: *nodeInclude
+          build:
+          {{leadTab "docker run -v \"${PWD}:/workspace\" -w /workspace --rm $(DOCKER_BASE) ./.pave/Buildfile"}}

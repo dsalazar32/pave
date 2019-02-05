@@ -1,4 +1,4 @@
-package storage
+package provider
 
 import (
 	"io/ioutil"
@@ -16,14 +16,14 @@ func init() {
 	}
 }
 
-func (s FileSystem) Read() (string, error) {
-	if _, err := os.Stat(s.filePath); err != nil {
+func (p FileSystem) Read() (string, error) {
+	if _, err := os.Stat(p.filePath); err != nil {
 		return "", err
 	}
-	b, err := ioutil.ReadFile(s.filePath)
+	b, err := ioutil.ReadFile(p.filePath)
 	return string(b), err
 }
 
-func NewFileSystem(infile string) (Storage, error) {
+func NewFileSystem(infile string) (Provider, error) {
 	return &FileSystem{infile}, nil
 }

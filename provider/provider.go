@@ -1,29 +1,33 @@
-package storage
+package provider
 
 import (
 	"fmt"
 	"strings"
 )
 
-type Provider int
+type Providers int
 
 const (
-	FSYS Provider = iota
+	FSYS Providers = iota
 	AWS
 	GCP
 )
 
-var pmap = map[string]Provider{
+type Provider interface {
+	Read() (string, error)
+}
+
+var pmap = map[string]Providers{
 	"s3": AWS,
 	"gs": GCP,
 }
 
 type ProviderSpec struct {
-	New         func(infile string) (Storage, error)
+	New         func(infile string) (Provider, error)
 	description string
 }
 
-var Constructors = map[Provider]*ProviderSpec{}
+var Constructors = map[Providers]*ProviderSpec{}
 
 func ProviderLookup(s string) (*ProviderSpec, error) {
 	p := strings.Index(s, "://")

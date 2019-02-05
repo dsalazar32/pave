@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/dsalazar32/pave/helper/envparser"
-	"github.com/dsalazar32/pave/storage"
+	"github.com/dsalazar32/pave/provider"
 	"io"
 	"os"
 )
@@ -51,7 +51,7 @@ func (c EnvCommand) Run(args []string) int {
 		}
 		envs = envparser.ParseEnvString(b.String())
 	} else if *in != "" {
-		p, err := storage.ProviderLookup(*in)
+		p, err := provider.ProviderLookup(*in)
 		if err != nil {
 			c.Ui.Error(err.Error())
 			return 1
