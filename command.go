@@ -20,5 +20,11 @@ func initCommands() map[string]cli.CommandFactory {
 		"env": func() (cli.Command, error) {
 			return commands.EnvCommand{Meta: meta}, nil
 		},
+		"env compare": func() (cli.Command, error) {
+			return commands.EnvCompareCommand{Meta: meta}, nil
+		},
+		"env push": func() (cli.Command, error) {
+			return commands.EnvPushCommand{Meta: meta}, nil
+		},
 	}
 }
