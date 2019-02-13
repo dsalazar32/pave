@@ -35,6 +35,10 @@ func (p Aws) Read() (string, error) {
 	return string(buf.Bytes()), nil
 }
 
+func (p Aws) Write(s string) error {
+	return nil
+}
+
 func NewAws(infile string) (Provider, error) {
 	return &Aws{
 		Downloader: s3manager.NewDownloader(session.Must(session.NewSession())),

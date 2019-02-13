@@ -24,6 +24,10 @@ func (p FileSystem) Read() (string, error) {
 	return string(b), err
 }
 
+func (p FileSystem) Write(s string) error {
+	return nil
+}
+
 func NewFileSystem(infile string) (Provider, error) {
 	return &FileSystem{infile}, nil
 }

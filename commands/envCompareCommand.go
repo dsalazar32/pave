@@ -2,8 +2,6 @@ package commands
 
 import (
 	"github.com/davecgh/go-spew/spew"
-	"github.com/dsalazar32/pave/helper/envparser"
-	"github.com/dsalazar32/pave/provider"
 )
 
 type EnvCompareCommand struct {
@@ -20,13 +18,13 @@ func (c EnvCompareCommand) Run(args []string) int {
 		return 1
 	}
 
-	origin, err := parseEnvString(args[0])
+	origin, err := loadByProvider(args[0])
 	if err != nil {
 		c.Ui.Error(err.Error())
 		return 1
 	}
 
-	target, err := parseEnvString(args[1])
+	target, err := loadByProvider(args[1])
 	if err != nil {
 		c.Ui.Error(err.Error())
 		return 1
@@ -39,20 +37,4 @@ func (c EnvCompareCommand) Run(args []string) int {
 
 func (c EnvCompareCommand) Synopsis() string {
 	panic("implement me")
-}
-
-func parseEnvString(infile string) (envparser.Envs, error) {
-	p, err := provider.ProviderLookup(infile)
-	if err != nil {
-		return nil, err
-	}
-	fsys, err := p.New(infile)
-	if err != nil {
-		return nil, err
-	}
-	file, err := fsys.Read()
-	if err != nil {
-		return nil, err
-	}
-	return envparser.ParseEnvString(file), nil
 }

@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"cloud.google.com/go/storage"
 	"context"
+	"fmt"
 	"io"
-	"strings"
 )
 
 type Gcp struct {
@@ -22,8 +22,7 @@ func init() {
 }
 
 func (p Gcp) Read() (string, error) {
-	urlParts := strings.Split(strings.TrimPrefix(p.filePath, "gs://"), "/")
-	gsBucket, gsKey := urlParts[0], strings.Join(urlParts[1:], "/")
+	gsBucket, gsKey, err := parseCloudStorageUrl(p.filePath)
 	bkt := p.Client.Bucket(gsBucket)
 	obj := bkt.Object(gsKey)
 	r, err := obj.NewReader(p.ctx)
@@ -37,6 +36,24 @@ func (p Gcp) Read() (string, error) {
 		return "", err
 	}
 	return buf.String(), nil
+}
+
+func (p Gcp) Write(s string) error {
+	gsBucket, gsKey, err := parseCloudStorageUrl(p.filePath)
+	if err != nil {
+		return err
+	}
+
+	bkt := p.Client.Bucket(gsBucket)
+	obj := bkt.Object(gsKey)
+	w := obj.NewWriter(p.ctx)
+	if _, err := fmt.Fprintf(w, s); err != nil {
+		return err
+	}
+	if err := w.Close(); err != nil {
+		return err
+	}
+	return nil
 }
 
 func NewGcp(infile string) (Provider, error) {

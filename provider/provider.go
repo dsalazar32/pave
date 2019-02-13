@@ -15,6 +15,7 @@ const (
 
 type Provider interface {
 	Read() (string, error)
+	Write(string) error
 }
 
 var pmap = map[string]Providers{
@@ -40,4 +41,14 @@ func ProviderLookup(s string) (*ProviderSpec, error) {
 			return nil, fmt.Errorf("Error looking up storage provider for %s:", provider)
 		}
 	}
+}
+
+func parseCloudStorageUrl(url string) (string, string, error) {
+	proto := strings.Index(url, "://")
+	urlParts := strings.Split(strings.TrimPrefix(url, url[:proto+3]), "/")
+	if len(urlParts) < 2 {
+		return "", "", fmt.Errorf("Error parsing Cloud Provider URL: %s", url)
+	}
+	bucket, key := urlParts[0], strings.Join(urlParts[1:], "/")
+	return bucket, key, nil
 }

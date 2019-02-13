@@ -2,6 +2,8 @@ package envparser
 
 import (
 	"bufio"
+	"bytes"
+	"fmt"
 	"regexp"
 	"strings"
 )
@@ -52,4 +54,19 @@ func (e Envs) ToMap() EnvMap {
 		m[env.Name] = env.Value
 	}
 	return m
+}
+
+func (e Env) ToString() string {
+	return fmt.Sprintf("%s=%s", e.Name, e.Value)
+}
+
+func (es Envs) ToString() string {
+	b := bytes.Buffer{}
+	for i, env := range es {
+		b.WriteString(env.ToString())
+		if len(es)-1 != i {
+			b.WriteString("\n")
+		}
+	}
+	return b.String()
 }

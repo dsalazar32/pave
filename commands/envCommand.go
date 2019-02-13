@@ -31,7 +31,10 @@ func (c EnvCommand) Run(args []string) int {
 
 	// TODO: Need to work on documentation and appropriate error verbiage
 	// STDIN or -in flag
-	var envs envparser.Envs
+	var (
+		envs    envparser.Envs
+		envsErr error
+	)
 	stdInf, _ := os.Stdin.Stat()
 	if (stdInf.Mode()&os.ModeCharDevice) == os.ModeCharDevice && *in == "" {
 		c.Ui.Error("Either pipe the property file in or use the `-in` flag.")
@@ -51,22 +54,11 @@ func (c EnvCommand) Run(args []string) int {
 		}
 		envs = envparser.ParseEnvString(b.String())
 	} else if *in != "" {
-		p, err := provider.ProviderLookup(*in)
-		if err != nil {
-			c.Ui.Error(err.Error())
+		envs, envsErr = loadByProvider(*in)
+		if envsErr != nil {
+			c.Ui.Error(envsErr.Error())
 			return 1
 		}
-		fsys, err := p.New(*in)
-		if err != nil {
-			c.Ui.Error(err.Error())
-			return 1
-		}
-		file, err := fsys.Read()
-		if err != nil {
-			c.Ui.Error(err.Error())
-			return 1
-		}
-		envs = envparser.ParseEnvString(file)
 	}
 	spew.Dump(envs)
 
@@ -79,4 +71,20 @@ func (c EnvCommand) Help() string {
 
 func (c EnvCommand) Synopsis() string {
 	panic("implement me")
+}
+
+func loadByProvider(infile string) (envparser.Envs, error) {
+	p, err := provider.ProviderLookup(infile)
+	if err != nil {
+		return nil, err
+	}
+	fsys, err := p.New(infile)
+	if err != nil {
+		return nil, err
+	}
+	file, err := fsys.Read()
+	if err != nil {
+		return nil, err
+	}
+	return envparser.ParseEnvString(file), nil
 }
