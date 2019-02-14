@@ -11,6 +11,7 @@ const (
 	FSYS Providers = iota
 	AWS
 	GCP
+	CHF
 )
 
 type Provider interface {
@@ -19,8 +20,9 @@ type Provider interface {
 }
 
 var pmap = map[string]Providers{
-	"s3": AWS,
-	"gs": GCP,
+	"s3":  AWS,
+	"gs":  GCP,
+	"dbg": CHF,
 }
 
 type ProviderSpec struct {
@@ -46,7 +48,7 @@ func ProviderLookup(s string) (*ProviderSpec, error) {
 func parseCloudStorageUrl(url string) (string, string, error) {
 	proto := strings.Index(url, "://")
 	urlParts := strings.Split(strings.TrimPrefix(url, url[:proto+3]), "/")
-	if len(urlParts) < 2 {
+	if len(urlParts) < 1 {
 		return "", "", fmt.Errorf("Error parsing Cloud Provider URL: %s", url)
 	}
 	bucket, key := urlParts[0], strings.Join(urlParts[1:], "/")

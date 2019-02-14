@@ -10,6 +10,7 @@ import (
 	"github.com/dsalazar32/pave/provider"
 	"io"
 	"os"
+	"reflect"
 )
 
 type EnvCommand struct {
@@ -86,5 +87,16 @@ func loadByProvider(infile string) (envparser.Envs, error) {
 	if err != nil {
 		return nil, err
 	}
-	return envparser.ParseEnvString(file), nil
+
+	var parsed envparser.Envs
+
+	t := reflect.TypeOf(fsys)
+	switch t.Elem().Name() {
+	case "Chef":
+		parsed = envparser.ParseEnvChefJson(file)
+	default:
+		parsed = envparser.ParseEnvString(file)
+	}
+
+	return parsed, nil
 }
