@@ -3,7 +3,9 @@ package envparser
 import (
 	"bufio"
 	"bytes"
+	"encoding/json"
 	"fmt"
+	"github.com/dsalazar32/pave/provider"
 	"regexp"
 	"strings"
 )
@@ -16,6 +18,28 @@ type Env struct {
 type Envs []Env
 
 type EnvMap map[string]string
+
+func ParseEnvChefJson(s string) Envs {
+	var dbs provider.DBags
+	b := []byte(s)
+	if err := json.Unmarshal(b, &dbs); err != nil {
+		fmt.Printf("there was an error unmarshalling the json request %v", err)
+	}
+
+	rs := bytes.Buffer{}
+	for _, item := range dbs.Items {
+		envs, ok := item.(map[string]interface{})["envs"]
+		if !ok {
+			break
+		}
+		for k, v := range envs.(map[string]interface{}) {
+			// TODO See about removing surrounding escaped quote on the values
+			rs.WriteString(fmt.Sprintf("%s=%q\n", k, v))
+		}
+	}
+
+	return ParseEnvString(rs.String())
+}
 
 func ParseEnvString(s string) Envs {
 	valid := regexp.MustCompile(`^(export )?\w+=.+`)
